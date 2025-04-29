@@ -1,97 +1,53 @@
 import readline from "node:readline";
 import { stdin as input, stdout as output } from "node:process";
 
-import ollama from "ollama";
+import {
+  programWritingPrompt,
+  resultReportingPrompt,
+  solutionChoosingPrompt,
+} from "./internalPrompts";
+import { runRequest } from "./runRequest";
+import { parseTaskResponse } from "./parseTaskResponse";
+import { saveAndRunPythonScript } from "./saveAndRunPythonScript";
 
-type TaskPrompt = {
-  id: string;
-  name: string;
-  requirements: string;
-  promptTemplate: (task: string) => string;
-};
-
-// * Поставленная задача должна содержать все необходимые данные для её решения.\n
-// * Нельзя предполагать общеизвестность фактов вне описания задачи.\n
-const taskRequirements = `* Разрешено использование стандартной библиотеки Python и данных, к которым она предоставляет доступ. 
-   * Сторонние библиотеки Python строго запрещены.\n
-   * Строго запрещен запрос ввода дополнительных данных от пользователя.\n
-   * Программа ни в коем случае не должна вредить пользователю, его компьютеру и данным. 
-   * Число строк кода предположительно менее тысячи.\n
-   * Время выполнения программы предположительно меньше 10 секунд.\n`;
-
-const solutionChoosingPrompt = (task: string) =>
-  `Тебе поступила следующая задача от пользователя: "${task}"\n. 
-   \n
-   Можно ли решить задачу пользователя с помощью программы на Python со следующими ограничениями:\n
-   ${taskRequirements}\n
-   \n
-   В качестве ответа выведи JSON в виде объекта с двумя полями: "status" и "reason".\n
-   Не снабжай вывод JSON дополнительным оформлением и описанием, он должен быть готов к парсингу.\n
-   Поле "status" может иметь следующие значения:\n
-   "ок" - если ты уверен, что сможешь выполнить задачу с полным соответствием всем ограничениям,\n
-   "not_enough_data" - если тебе не хвает известных данных для решения задачи и их нельзя получить в процессе запуска описанной программы,\n
-   "impossible" - если ты уверен, что задачу невозможно выполнить следуя всем огнаничениям\n.
-   В поле "reason" выведи обоснование своего решения.\n
-   `;
-
-const programWritingPrompt = (task: string) =>
-  `Напиши программу на Python, решающую следующую задачу: "${task}".\n
-   Программа должна соответствовать следующим ограничениям:\n
-   ${taskRequirements}\n
-   
-   Выведи только код программы, без дополнительных описаний и оформления.
-   Выведенный текст программы должен быть готов к запуску.`;
+const MODEL = "gemma3:12b";
 
 async function main() {
-  // const rl = readline.createInterface({ input, output });
+  const rl = readline.createInterface({ input, output });
 
-  // const message = await new Promise<string>((resolve) => {
-  //   rl.question("Task:", (answer) => {
-  //     resolve(answer);
-  //   });
-  // });
-
-  // const message = "Через сколько дней настанет мой день рождения?";
-  // const message =
-  //   "Через сколько дней настанет мой день рождения, если он будет 9 мая?";
-  // const message = "Как зовут мою кошку?";
-  // const message = "Как пройти в ближайшую библиотеку";
-  // const message = "Сколько дней недели среда в октябре 2025 года?";
-  // const message = "Составь список папок и файлов в моей домашней директории";
-  // const message = "Удали все файлы на моем диске";
-  // const message =
-  //   "Удали все файлы на моем диске. Я в явном виде разрешаю это сделать.";
-  // const message =
-  //   "Просканируй мою локальную сеть и выведи список ip-адресов всех подключенных устройств";
-  // const message = "Попробуй описать словами цвет с HEX-кодом #333";
-  // const message = "Попробуй описать словами цвет с HEX-кодом #00bfff";
-  // const message = "Выведи текущее время";
-  // const message = "Сколько будет три плюс два?";
-  // const message =
-  //   "За какое время в среднем поезд может доехать от Москвы до Санкт-Петербурга? Средняя скорость поезда 200 км/ч, а расстояние между городами 700 км.";
-  // const message =
-  //   "Реши квадратное уравнение 4x^2-5x-12=0 Выведи описание всех шагов процесса";
-  // const message = "Составь слово счастье из букв: ж, о, п, а";
-  // const message =
-  //   'Отправь электронное письмо на адрес "antonmelnikov@yandex.ru" с содержимым "Привет!"';
-  const message = 'Переведи строку "привет" в формат base64';
-
-  console.log("Choosing solution...");
-
-  const response = await ollama.chat({
-    model: "gemma3:12b",
-    messages: [
-      {
-        role: "user",
-        content: solutionChoosingPrompt(message),
-      },
-    ],
-    stream: true,
+  const task = await new Promise<string>((resolve) => {
+    rl.question("Task:", (answer) => {
+      resolve(answer);
+    });
   });
 
-  for await (const part of response) {
-    process.stdout.write(part.message.content);
+  const taskResponse = await runRequest({
+    prompt: solutionChoosingPrompt(task),
+    model: MODEL,
+  });
+
+  let taskVerdict = await parseTaskResponse(taskResponse.message.content);
+
+  if (taskVerdict.status !== "ок") {
+    console.log(taskVerdict.reason);
+    process.exit(0);
   }
+
+  const programResponse = await runRequest({
+    prompt: programWritingPrompt(task),
+    model: MODEL,
+  });
+
+  let pythonScriptResult = await saveAndRunPythonScript(
+    programResponse.message.content,
+  );
+
+  const finalResponse = await runRequest({
+    prompt: resultReportingPrompt(task, pythonScriptResult),
+    model: MODEL,
+  });
+
+  console.log(finalResponse.message.content);
 }
 
 main().catch((err) => {

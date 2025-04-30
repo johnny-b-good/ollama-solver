@@ -11,6 +11,7 @@ import { parseTaskResponse } from "./parseTaskResponse";
 import { saveAndRunPythonScript } from "./saveAndRunPythonScript";
 
 const MODEL = "gemma3:12b";
+const CODING_MODEL = "gemma3:12b";
 
 async function main() {
   const rl = readline.createInterface({ input, output });
@@ -21,6 +22,8 @@ async function main() {
     });
   });
 
+  console.log("Thinking about the task...");
+
   const taskResponse = await runRequest({
     prompt: solutionChoosingPrompt(task),
     model: MODEL,
@@ -28,19 +31,25 @@ async function main() {
 
   let taskVerdict = await parseTaskResponse(taskResponse.message.content);
 
-  if (taskVerdict.status !== "ок") {
-    console.log(taskVerdict.reason);
+  if (taskVerdict.status !== "ok") {
+    console.log(taskVerdict);
     process.exit(0);
   }
 
+  console.log("Creating helper...");
+
   const programResponse = await runRequest({
-    prompt: programWritingPrompt(task),
-    model: MODEL,
+    prompt: programWritingPrompt(taskVerdict.task),
+    model: CODING_MODEL,
   });
+
+  console.log("Running helper...");
 
   let pythonScriptResult = await saveAndRunPythonScript(
     programResponse.message.content,
   );
+
+  console.log("Thinking about the result...");
 
   const finalResponse = await runRequest({
     prompt: resultReportingPrompt(task, pythonScriptResult),
@@ -48,6 +57,8 @@ async function main() {
   });
 
   console.log(finalResponse.message.content);
+
+  process.exit(0);
 }
 
 main().catch((err) => {

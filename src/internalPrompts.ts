@@ -1,42 +1,45 @@
-const taskRequirements = `* Разрешено использование стандартной библиотеки Python и данных, к которым она предоставляет доступ. 
-   * Сторонние библиотеки Python строго запрещены.\n
-   * Строго запрещен запрос ввода дополнительных данных от пользователя.\n
-   * Программа ни в коем случае не должна вредить пользователю, его компьютеру и данным. 
-   * Программа должна выводить результат, интерсующий пользователя, с развернутым описанием.
-   * Число строк кода предположительно менее тысячи.\n
-   * Время выполнения программы предположительно меньше 10 секунд.\n`;
-
-// * Поставленная задача должна содержать все необходимые данные для её решения.\n
-// * Нельзя предполагать общеизвестность фактов вне описания задачи.\n
-
 export const solutionChoosingPrompt = (task: string) =>
-  `Тебе поступила следующая задача от пользователя: "${task}"\n. 
-   \n
-   Можно ли решить задачу пользователя с помощью программы на Python со следующими ограничениями:\n
-   ${taskRequirements}\n
-   \n
-   В качестве ответа выведи JSON в виде объекта с двумя полями: "status" и "reason".\n
-   Не снабжай вывод JSON дополнительным оформлением и описанием, он должен быть готов к парсингу.\n
-   Поле "status" может иметь следующие значения:\n
-   "ок" - если ты уверен, что сможешь выполнить задачу с полным соответствием всем ограничениям,\n
-   "not_enough_data" - если тебе не хвает известных данных для решения задачи и их нельзя получить в процессе запуска описанной программы,\n
-   "no_calculations_needed" - если ты можешь с уверенностью отвтетить на вопрос пользователя без дополнительных вычислений с помощью Python,\n
-   "impossible" - если ты уверен, что задачу невозможно выполнить следуя всем огнаничениям\n.
-   В поле "reason" выведи обоснование своего решения.\n
-   `;
+  `
+  You have received the following task from the user: "${task}".\n
+  Can the user's task be solved using a Python program with the following limitations:\n
+  ${taskRequirements}\n
+  Output a JSON object with three fields: "task", "status", "message".\n
+  Do not add any additional formatting or descriptions to the JSON output; it should be ready for parsing.\n
+  The "task" field should contain user's task translated to English if needed.\n
+  The "status" field can have the following values:\n
+  "ok" - if you are confident that you can perform the task with full compliance with all limitations,\n
+  "not_enough_data" - if you lack the necessary known data to solve the task and it cannot be calculated with Python,\n
+  "no_calculations_needed" - if you can confidently answer the user's question without additional Python calculations,\n
+  "impossible" - if you are confident that the task cannot be completed following all limitations.\n
+  Output the justification for your decision in the "message" field. Keep it short and to the point.\n
+  Language of the text in the "message" field should be the same as in user's task.\n
+  `.trim();
 
 export const programWritingPrompt = (task: string) =>
-  `Напиши программу на Python, решающую следующую задачу: "${task}".\n
-   Программа должна соответствовать следующим ограничениям:\n
-   ${taskRequirements}\n
-   
-   Выведи только код программы, без дополнительных описаний и оформления.\n
-   Выведенный текст программы должен быть готов к запуску.\n`;
+  `
+  Write a Python program to solve the following task: "${task}".\n
+  The program must adhere to the following restrictions:\n
+  ${taskRequirements}\n
+  Output only the program code, without additional descriptions or formatting.\n
+  The outputted program text should be ready to run.\n
+  `.trim();
 
 export const resultReportingPrompt = (task: string, result: string) =>
-  `Пользователь поставил тебе следующую задачу: "${task}".\n
-   С помощью дополнительных вычислений ты получил следующую информацию: "${result}".\n
-   Сформулируй развернутый ответ на запрос пользователя, используя эти данные.\n
-   Попытайся оценить корректность ответа на заданный вопрос.\n
-   Если есть сомнения - подчеркни это в своем ответе.\n
-   При ответе минимизируй использование посторонней информации.\n`;
+  `
+  The user gave you the following task: "${task}".\n
+  Through additional calculations, you've obtained the following information: "${result}".\n
+  Formulate a detailed answer to the user's request, using this data.\n
+  The language of answer should be the same as in user's task.\n
+  `.trim();
+
+const taskRequirements = `
+  * It is allowed to use the standard Python library and data to which it provides access.\n
+  * Third-party Python libraries are strictly prohibited.\n
+  * Strictly prohibited to request additional data input from the user.\n
+  * You can calculate additional data with Python.
+  * The program must not harm the user, their computer, or their data under any circumstances.\n
+  * The program should output the result of interest to the user with a detailed expanation.\n
+  * The language of program output should be the same as in user's task.
+  * The number of code lines should be reasonably small.\n
+  * The program execution time be reasonably small.\n
+  `.trim();

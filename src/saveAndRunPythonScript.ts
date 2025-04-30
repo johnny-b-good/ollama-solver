@@ -11,13 +11,13 @@ export const saveAndRunPythonScript = async (pythonResponse: string) => {
     await writeFile("temp.py", pythonSourceCode);
   } catch (err) {
     console.error(err);
-    throw new Error("Ошибка сохранения скрипта");
+    throw new Error("Temp script saving error");
   }
 
   try {
     return execSync("python temp.py").toString();
   } catch (err) {
     console.error(err);
-    throw new Error("Ошибка запуска скрипта");
+    throw new Error("Temp script running error");
   }
 };

@@ -1,13 +1,14 @@
 import { z } from "zod";
 
 const TaskVerdictSchema = z.object({
+  task: z.string().min(1),
   status: z.enum([
-    "ок",
+    "ok",
     "not_enough_data",
     "no_calculations_needed",
     "impossible",
   ]),
-  reason: z.string().min(1),
+  message: z.string().min(1),
 });
 
 export type TaskVerdict = z.infer<typeof TaskVerdictSchema>;
@@ -26,6 +27,6 @@ export const parseTaskResponse = async (
     return TaskVerdictSchema.parse(parsedResponse);
   } catch (err) {
     console.error(err);
-    throw new Error("Ошибка парсинга ответа модели");
+    throw new Error("Model response pasing error");
   }
 };
